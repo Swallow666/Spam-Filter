@@ -1,5 +1,3 @@
-
-
 import os
 import numpy as np
 import re  ##正则匹配包
@@ -36,133 +34,94 @@ def fileParser(path):
     spam = 'spam'
     ham_list = []
     spam_list = []
-    
+    ham_num = 0
+    spam_num = 0
+
     for file in files: #遍历文件夹
         if not os.path.isdir(file): #判断是否是文件夹，不是文件夹才打开
             
-            if (ham in file ):
+            if (ham in file):
+                ham_num += 1
                 ham_list += email_parser(path + "/" + file)
             if (spam in file):
+                spam_num += 1
                 spam_list += email_parser(path + "/" + file)
 
-    return ham_list, spam_list,set(ham_list),set(spam_list)
+    ham_doc_prob = ham_num/(ham_num + spam_num)
+    spam_doc_prob = spam_num/(ham_num + spam_num)
 
-    
-##计算出各自的frequency, 不过这个frequency我不太确定是怎么算一次.............
-def count_word(ham_list,spam_list,vocab_set):
-    ham_word_count = {}
-    spam_word_count = {}
-    
-    for word in vocab_set:
-        counter = 0
-        if (word in ham_list):
-            counter = ham_list.count(word)
-            ham_word_count[word] = counter
-        if (word in spam_list):
-            counter = spam_list.count(word)
-            spam_word_count[word] = counter
-     
-    return ham_word_count,spam_word_count
-            
+    return ham_list, spam_list,set(ham_list),set(spam_list), ham_doc_prob, spam_doc_prob
+
+
 ##Building the Model
-def set_model(ham_list,spam_list,ham_set,spam_set,file_name):
-    vocab_set = ham_set.union(spam_set)
-    with open(file_name,'a', encoding = 'latin-1') as model:
-        
+def set_model(ham_list,spam_list,vocab_set,file_name):
+
+    ham_dic = {}
+    spam_dic = {}
+
+    with open(file_name,'w', encoding = 'latin-1') as model:
+
+        ln_ctr = 1
         for word in vocab_set:
             ham_count = ham_list.count(word)
-            ham_prob = ( ham_list.count(word) + 0.5) / (len(ham_list) + 0.5*len(vocab_set))
-            spam_count = (spam_list.count(word))
-            spam_prob = ( spam_list.count(word) + 0.5) / (len(spam_list) + 0.5*len(spam_set))
-            model.write(word + '  ' + str(ham_count) + '  ' + str(ham_prob) + '  ' + str(spam_count) + '  ' + str(spam_prob) + '\n' )
-            
-## Building and Evaluating the Classifier        
-def test_model(test_files_name,model_name):
-    
-    
-    files = os.listdir(test_files_name)
-   
+            ham_prob = (ham_count + 0.5) / (len(ham_list) + 0.5*len(vocab_set))
+            ham_dic[word] = ham_prob
+            spam_count = spam_list.count(word)
+            spam_prob = (spam_count + 0.5) / (len(spam_list) + 0.5*len(vocab_set))
+            spam_dic[word] = spam_prob
+            model.write(str(ln_ctr) + '  ' + word + '  ' + str(ham_count) + '  ' + str(ham_prob) + '  ' + str(spam_count) + '  ' + str(spam_prob) + '\n' )
+            ln_ctr += 1
+    return ham_dic, spam_dic
+
+def test_model(path,ham_dic,spam_dic,ham_doc_prob,spam_doc_prob):
+
+    files = os.listdir(path)
     ham = 'ham'
     spam = 'spam'
-    ham_count = 0
-    spam_count = 0
-    
-    for file in files: #遍历文件夹
-        
-        if not os.path.isdir(file): #判断是否是文件夹，不是文件夹才打开
-            
-            if (ham in file ):
-                ham_count += 1
-            if (spam in file):
-                spam_count += 1
-    
-    
-    with open('baseline-result.txt','a', encoding = 'latin-1') as test:
-        
-        number = 0
-        result = ''
-        key = 0
-        
-        with open("model.txt", "r") as model:
-            model_set = [[x for x in line.split()] for line in model] ## this line of the code, I search stackoverflow to find this method, and it works:)
-        
-            for file in files:
-                number +=1
-                ##email_list = email_parser(file)
-                test.write(str(number) + '  ' + str(file) + '  ')
+
+    with open('baseline-result.txt','w', encoding = 'latin-1') as model:
+
+        ln_ctr = 1
+
+        for file in files: 
+            if not os.path.isdir(file): 
                 
-                email_list = email_parser(test_files_name + "/" + file)
-                
-                score_ham = math.log( (ham_count)/(spam_count + ham_count),10)
-                score_spam = math.log( (spam_count)/(spam_count + ham_count),10)
-                
-                    
-                for word in email_list:
-                    
-                    for record in model_set:
-                        for data in record:
-                            if data == word:
-                                score_ham += math.log(float(model_set[model_set.index(record)][2]), 10)
-                                score_spam += math.log(float(model_set[model_set.index(record)][4]), 10)
-                             
-                        
-                test.write(str(score_ham) + '  ' + str(score_spam) + '  ')
-    
-    
-        
-                if (ham in file ):
-                    test.write(ham + '  ')
-                    
-                if (spam in file):
-                    test.write(spam + '  ')
-            
-                test.write('\n')
-            
-                
-              
-        
-        
-        
-        
-                
-    
+                score_ham, score_spam = math.log10(ham_doc_prob), math.log10(spam_doc_prob)
+                file_words = email_parser(path + "/" + file)
+
+                for word in file_words:
+                    if word in ham_dic:
+                        score_ham += math.log10(ham_dic[word])
+                    if word in spam_dic: 
+                        score_spam += math.log10(spam_dic[word])
+
+                if score_ham > score_spam:
+                    guess = ham
+                else:
+                    guess = spam
+
+                if ham in file:
+                    real = ham
+                else:
+                    real = spam
+
+                if guess==real:
+                    guess_what = 'right'
+                else:
+                    guess_what = 'wrong'
+
+                model.write(str(ln_ctr) + '  ' + file + '  ' + guess + '  ' + str(score_ham) + '  ' + str(score_spam) + '  ' + real + '  ' + guess_what + '\n')
+                ln_ctr += 1
 
 
 def main():
-    ham_list, spam_list,ham_set,spam_set = fileParser('train111')
-    print(len(ham_set))
-    print(len(spam_set))
+    ham_list, spam_list, ham_set, spam_set, ham_doc_prob, spam_doc_prob = fileParser('train111')
+    
     vocab = ham_set.union(spam_set)
-    print(len(vocab))
     
-    ham_word_count,spam_word_count = count_word(ham_list,spam_list,vocab)
-    print (ham_list.count('a') + spam_list.count('a'))
-    print (ham_word_count['a'])
-    print (spam_word_count['a'])
-    
-    ##set_model(ham_list,spam_list,ham_set,spam_set,'model.txt')
-    test_model('test111', 'model.txt')
-    
-if __name__ == '__main__':
-		main()	
+    ham_dic, spam_dic = set_model(ham_list,spam_list,vocab,'model.txt')
 
+    test_model('test111', ham_dic, spam_dic, ham_doc_prob, spam_doc_prob)
+
+if __name__ == '__main__':
+    main()
