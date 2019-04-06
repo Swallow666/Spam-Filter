@@ -23,10 +23,16 @@ def email_parser(email_path,mode,stopwords=None):
 
     elif mode == 1:
         for word in alist:
-            if word not in stopwords:
-                if(len(word) >= 1):
+            if(len(word) >= 1):
+                if word not in stopwords:
                     wordList.append(word)
-            
+
+    elif mode == 2:
+        for word in alist:
+            if(len(word) >= 1):
+                if 3 <= len(word) <= 8:
+                    wordList.append(word)
+
     return wordList ##wordList,set(wordList)
     
 ##归类目录下ham和spam文件并分别处理
@@ -108,20 +114,28 @@ def test_model(path,ham_dic,spam_dic,ham_doc_prob,spam_doc_prob, file_name, mode
 
 def main():
     # mode 0 for baseline, 1 for stopword, 2 for wordlength
-    ham_list, spam_list, ham_set, spam_set, ham_doc_prob, spam_doc_prob = fileParser('train111',0)
+    baseline_mode = 0
+    stopword_mode = 1
+    wordlength_mode = 2
+
+    ham_list, spam_list, ham_set, spam_set, ham_doc_prob, spam_doc_prob = fileParser('train111',baseline_mode)
     vocab = ham_set.union(spam_set)
     ham_dic, spam_dic = set_model(ham_list,spam_list,vocab,'model.txt')
-    test_model('test111', ham_dic, spam_dic, ham_doc_prob, spam_doc_prob, 'baseline-result.txt', 0)
+    test_model('test111', ham_dic, spam_dic, ham_doc_prob, spam_doc_prob, 'baseline-result.txt', baseline_mode)
 
     stopword_lines = readtxt('stopword.txt')
     stop_string = "".join(stopword_lines)
     stop_string = stop_string.lower()
     stop_list = re.split("[^a-zA-Z]",stop_string)
-    stopword_ham_list, stopword_spam_list, stopword_ham_set, stopword_spam_set, stopword_ham_doc_prob, stopword_spam_doc_prob = fileParser('train111',1,stop_list)
+    stopword_ham_list, stopword_spam_list, stopword_ham_set, stopword_spam_set, stopword_ham_doc_prob, stopword_spam_doc_prob = fileParser('train111',stopword_mode,stop_list)
     stopword_vocab = stopword_ham_set.union(stopword_spam_set)
     stopword_ham_dic, stopword_spam_dic = set_model(stopword_ham_list,stopword_spam_list,stopword_vocab,'stopword-model.txt')
-    test_model('test111', stopword_ham_dic, stopword_spam_dic, stopword_ham_doc_prob, stopword_spam_doc_prob, 'stopword-result.txt', 1,stop_list)
+    test_model('test111', stopword_ham_dic, stopword_spam_dic, stopword_ham_doc_prob, stopword_spam_doc_prob, 'stopword-result.txt', stopword_mode,stop_list)
 
+    wordlength_ham_list, wordlength_spam_list, wordlength_ham_set, wordlength_spam_set, wordlength_ham_doc_prob, wordlength_spam_doc_prob = fileParser('train111',wordlength_mode)
+    wordlength_vocab = wordlength_ham_set.union(wordlength_spam_set)
+    wordlength_ham_dic, wordlength_spam_dic = set_model(wordlength_ham_list,wordlength_spam_list,wordlength_vocab,'wordlength-model.txt')
+    test_model('test111', wordlength_ham_dic, wordlength_spam_dic, wordlength_ham_doc_prob, wordlength_spam_doc_prob, 'wordlength-result.txt', wordlength_mode)
 
 if __name__ == '__main__':
     main()
