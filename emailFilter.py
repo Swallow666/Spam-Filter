@@ -2,13 +2,13 @@ import os
 import re
 import math
 
-##读取email中的内容   
+# read text lines from a path   
 def readtxt(email_path):
     with open(email_path, 'r', encoding = 'latin-1') as email:
         lines = email.readlines()
     return lines
 
-##清理email中大小写和非英文单词内容
+# return proper word list for each file according to the mode
 def email_parser(email_path,mode,stopwords=None):
     wordList = []
     lines = readtxt(email_path)
@@ -33,12 +33,12 @@ def email_parser(email_path,mode,stopwords=None):
                 if 3 <= len(word) <= 8:
                     wordList.append(word)
 
-    return wordList ##wordList,set(wordList)
+    return wordList
     
-##归类目录下ham和spam文件并分别处理
+# parse train files to spam and ham list 
 def fileParser(path,mode,stopwords=None):
     
-    files = os.listdir(path) #得到文件夹下的所有文件名称
+    files = os.listdir(path) #all file names in the dir
     
     ham = 'ham'
     spam = 'spam'
@@ -47,8 +47,8 @@ def fileParser(path,mode,stopwords=None):
     ham_num = 0
     spam_num = 0
 
-    for file in files: #遍历文件夹
-        if not os.path.isdir(file): #判断是否是文件夹，不是文件夹才打开
+    for file in files: 
+        if not os.path.isdir(file): #open if not dir
             
             if (ham in file):
                 ham_num += 1
@@ -63,7 +63,7 @@ def fileParser(path,mode,stopwords=None):
     return ham_list, spam_list,set(ham_list),set(spam_list), ham_doc_prob, spam_doc_prob
 
 
-##Building the Model
+# Building the Model
 def set_model(ham_list,spam_list,vocab_set,file_name):
 
     ham_dic = {}
@@ -89,7 +89,7 @@ def test_model(path,ham_dic,spam_dic,ham_doc_prob,spam_doc_prob, file_name, mode
     ham = 'ham'
     spam = 'spam'
 
-    with open(file_name,'w', encoding = 'latin-1') as baseline:
+    with open(file_name,'w', encoding = 'latin-1') as model:
 
         ln_ctr = 1
 
@@ -109,7 +109,7 @@ def test_model(path,ham_dic,spam_dic,ham_doc_prob,spam_doc_prob, file_name, mode
                 real = ham if ham in file else spam
                 guess_what = 'right' if guess == real else 'wrong'
 
-                baseline.write(str(ln_ctr) + '  ' + file + '  ' + guess + '  ' + str(score_ham) + '  ' + str(score_spam) + '  ' + real + '  ' + guess_what + '\n')
+                model.write(str(ln_ctr) + '  ' + file + '  ' + guess + '  ' + str(score_ham) + '  ' + str(score_spam) + '  ' + real + '  ' + guess_what + '\n')
                 ln_ctr += 1
 
 def main():
